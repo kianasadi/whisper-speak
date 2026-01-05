@@ -1,8 +1,6 @@
 # whisper-keyboard
 
-Video demo: https://www.youtube.com/watch?v=VnFtVR72jM4&feature=youtu.be
-
-Smulate keyboard typing with voice commands on your computer. Use the power of OpenAI's Whisper.
+Simulate keyboard typing with voice commands on your computer. Use the power of OpenAI's Whisper.
 
 Start the wkey listener. Keep a button pressed (by default: right ctrl) and speak. Your voice will be recoded locally. When the button is released, your command will be transcribed via Whisper and the text will be streamed to your keyboard.
 
@@ -61,3 +59,5 @@ Haven't tested it on Windows yet. If you do, please let me know how it goes.
 ## Security risks
 
 This script creates a recording with your microphone and sends the audio to the Whisper API. The Whisper API response will be automatically streamed to your keyboard and executed there. This might entail security risks. Use at your own risk. 
+
+TEST

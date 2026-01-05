@@ -12,16 +12,16 @@ with open('requirements.txt') as f:
     required = f.read().splitlines()
 
 setup(name='wkey',
-      version='0.2',
+      version='3',
       description='Integrate OpenAI speech-to-text Whisper with your keyboard',
       long_description=long_description,
       long_description_content_type='text/markdown',
-      url='https://github.com/vlad-ds/whisper-keyboard',
-      author='Vlad Gheorghe',
-      author_email='vlad.datapro@gmail.com',
-      license='MIT',
+      url='',
+      author='',
+      author_email='',
+      license='',
       packages=['wkey'],
-      scripts=['scripts/wkey', 'scripts/fkey'],
+      scripts=['scripts/wkey', 'scripts/wkey-gui', 'scripts/fkey'],
       install_requires=required,
       include_package_data=True,
       zip_safe=False

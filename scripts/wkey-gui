@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""
+wkey-gui - GUI version of whisper-keyboard
+A minimal Apple-style floating window for voice-to-text input.
+"""
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from wkey.gui import main
+main()
