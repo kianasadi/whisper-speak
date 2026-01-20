@@ -1,5 +1,5 @@
 import os
-import openai
+from openai import OpenAI
 
 def apply_gpt_correction(transcript: str, instruction: str) -> str:
     if not instruction or not instruction.strip():
@@ -11,19 +11,22 @@ def apply_gpt_correction(transcript: str, instruction: str) -> str:
         {"role": "user", "content": f"Text: {transcript}\nInstruction: {instruction}"}
     ]
 
+    api_key = os.environ.get("OPENAI_API_KEY")
     api_base = os.environ.get("OPENAI_API_BASE")
     model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
     try:
-        # Configure API base if provided (e.g. for Groq)
-        if api_base:
-            openai.api_base = api_base
+        # Create client with optional custom base URL (for Groq, etc.)
+        client = OpenAI(
+            api_key=api_key,
+            base_url=api_base if api_base else None
+        )
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=model,
             messages=messages
         )
-        return response.choices[0].message['content'].strip()
+        return response.choices[0].message.content.strip()
     except Exception:
         return transcript  # Silent fallback to original
 

@@ -17,7 +17,8 @@ Whisper Keyboard is a voice-to-text automation tool that allows dictation anywhe
 ```
 whisper-keyboard/
 ├── wkey/                     # Main package
-│   ├── gui.py               # Apple-style GUI application (main entry point)
+│   ├── gui.py               # customtkinter GUI (legacy)
+│   ├── gui_pyqt.py          # PyQt6 GUI (recommended, main entry point)
 │   ├── key_config.py        # Hotkey configuration and persistence
 │   ├── wkey.py              # Legacy CLI application
 │   ├── whisper.py           # Whisper API wrapper
@@ -26,37 +27,52 @@ whisper-keyboard/
 │   └── .last_prompt         # Persistent prompt storage
 ├── scripts/
 │   ├── wkey                 # CLI entry point
+│   ├── wkey-gui             # customtkinter GUI entry point
 │   └── fkey                 # Key finder entry point
 ├── .env                     # Environment config (API keys) - NOT in git
 ├── .env.template            # Template for .env setup
-├── setup.py                 # Package configuration
+├── setup.py                 # Package configuration (version 3)
 └── requirements.txt         # Dependencies
 ```
 
 ## Key Technologies
 
 - **Python 3.x**
-- **customtkinter** - Modern GUI with Apple-style dark mode
+- **PyQt6** - Modern cross-platform GUI framework (recommended)
+- **customtkinter** - Alternative GUI with Apple-style dark mode
 - **pynput** - Global keyboard listening and typing simulation
 - **sounddevice** - Microphone audio capture
 - **scipy** - WAV file handling
-- **openai** (0.27.8) - Legacy OpenAI SDK for Whisper and ChatCompletion
+- **openai** (>=1.0.0) - OpenAI SDK for Whisper and Chat Completions
 - **ffmpeg** (optional) - Audio compression
 
-## GUI Features
+## GUI Options
 
-The GUI (`wkey/gui.py`) provides:
+### PyQt6 GUI (`wkey/gui_pyqt.py`) - Recommended
+
+The main GUI application featuring:
 
 - **Status indicator** - Green (ready), Red (recording), Orange (processing)
 - **Two recording hotkeys**:
-  - **Hotkey** (top right): Regular recording, just types text
-  - **Auto-enter key**: Recording + automatic Enter/Cmd+Enter after typing
+  - **Transcription hotkey**: Regular recording, types text
+  - **Auto-enter hotkey**: Recording + automatic Enter/Cmd+Enter after typing
 - **Send mode toggle** (⏎/⌘⏎): Choose between Enter and Cmd+Enter for auto-send
-- **Always on top toggle**: Keep window floating above others
-- **Start with computer**: macOS LaunchAgent autostart
+- **LLM processing toggle**: Enable/disable AI text correction
+- **Instructions dialog**: Edit LLM prompt in a modal dialog
 - **Language dropdown**: 18 languages supported (default: Swedish)
-- **LLM processing toggle**: Enable/disable GPT text correction
-- **Prompt input**: Custom instruction for LLM processing
+- **Start with computer**: macOS LaunchAgent autostart
+- **API Keys dialog**: Configure API keys, base URL, and models
+- **Help mode**: Toggle (?) to show tooltips on hover
+
+**New in PyQt6 GUI:**
+- API Keys configuration dialog (saved to `~/.whisper-speak/.env`)
+- Instructions dialog for LLM prompts
+- Custom toggle switch widget
+- Instant tooltips in help mode
+
+### customtkinter GUI (`wkey/gui.py`) - Legacy
+
+The original GUI with similar features using customtkinter.
 
 ## Configuration
 
@@ -64,8 +80,8 @@ The GUI (`wkey/gui.py`) provides:
 
 ```json
 {
-  "hotkey": "ctrl",
-  "auto_enter_key": "shift",
+  "hotkey": "ctrl_l",
+  "auto_enter_key": "shift_r",
   "send_mode": "cmd+enter",
   "language": "sv",
   "use_llm": false,
@@ -73,7 +89,11 @@ The GUI (`wkey/gui.py`) provides:
 }
 ```
 
-### Environment Variables (`.env`)
+### Environment Variables
+
+**Development mode:** `.env` file in project root
+
+**Bundled app:** `~/.whisper-speak/.env`
 
 ```bash
 # Required
@@ -96,8 +116,12 @@ pip install -r requirements.txt
 # Install package
 pip install -e .
 
-# Run GUI application (recommended)
+# Run PyQt6 GUI (recommended)
+python -m wkey.gui_pyqt
+
+# Run customtkinter GUI (legacy)
 python -m wkey.gui
+wkey-gui
 
 # Run legacy CLI application
 wkey
@@ -110,23 +134,36 @@ fkey
 
 | File | Purpose |
 |------|---------|
-| `wkey/gui.py` | Apple-style GUI, audio recording, keyboard listener, transcription |
+| `wkey/gui_pyqt.py` | PyQt6 GUI - main application with API keys dialog |
+| `wkey/gui.py` | customtkinter GUI (legacy) |
 | `wkey/key_config.py` | Hotkey configuration, persistence, LaunchAgent management |
 | `wkey/whisper.py` | `apply_whisper()` - Sends audio to Whisper API |
 | `wkey/utils.py` | `apply_gpt_correction()` - LLM text processing |
 
 ## Important Code Locations
 
-### gui.py
+### gui_pyqt.py (PyQt6)
+- **Main window**: `WKeyGUI` class
+- **Keyboard listener**: `_start_keyboard_listener()`, `_on_key_press()`, `_on_key_release()`
+- **Audio recording**: `_start_audio_stream()`, `_audio_callback()`
+- **Transcription**: `_process_audio()` - includes silence/hallucination detection
+- **API Keys dialog**: `APIKeysDialog` class - configure API settings
+- **Instructions dialog**: `InstructionsDialog` class - edit LLM prompt
+- **Environment management**: `_get_env_file_path()`, `_load_env_values()`, `_save_env_values()`
+- **Custom widgets**: `ToggleSwitch`, `InstantTooltipFilter`
+
+### gui.py (customtkinter)
 - **Keyboard listener**: `_start_keyboard_listener()`, `_on_key_press()`, `_on_key_release()`
 - **Audio recording**: `_start_audio_stream()`, `_audio_callback()`
 - **Transcription**: `_process_audio()` - includes silence/hallucination detection
 - **Auto-send logic**: `_process_audio()` - uses `get_send_mode()` to choose Enter/Cmd+Enter
+- **Help mode**: `_toggle_help_mode()`, `_show_tooltip()`, `_hide_tooltip()`
 
 ### key_config.py
 - **Config persistence**: `_load_config()`, `_save_config()` → `~/.wkey_config`
 - **Hotkey capture**: `_capture_new_hotkey()`, `_capture_new_auto_enter_key()`
 - **LaunchAgent**: `_create_launch_agent()`, `_remove_launch_agent()` → `~/Library/LaunchAgents/com.wkey.autostart.plist`
+- **Autostart uses**: `python -m wkey.gui_pyqt` as the startup command
 
 ## Silence & Hallucination Detection
 
@@ -140,16 +177,15 @@ fkey
 ## Dependencies
 
 ```
+customtkinter>=5.2.0
 numpy
-openai==0.27.8
+openai>=1.0.0
 pynput==1.7.6
+PyQt6>=6.4.0
 python-dotenv==1.0.0
-scipy==1.8.0
+scipy>=1.9.0
 sounddevice==0.4.6
-customtkinter
 ```
-
-**Note:** Uses legacy openai SDK (0.27.8). Migration to v1.x would require significant changes.
 
 ## Platform Requirements
 
@@ -161,14 +197,25 @@ customtkinter
 
 | Shortcut | Action |
 |----------|--------|
-| Hold hotkey | Start recording |
-| Release hotkey | Stop recording, transcribe, type |
-| Hold auto-enter key | Start recording (with auto-send) |
-| Release auto-enter key | Stop, transcribe, type, send |
+| Hold transcription hotkey | Start recording |
+| Release transcription hotkey | Stop recording, transcribe, type |
+| Hold auto-enter hotkey | Start recording (with auto-send) |
+| Release auto-enter hotkey | Stop, transcribe, type, send |
 | Ctrl+Shift+K | Enter hotkey change mode (CLI) |
 | Ctrl+Shift+E | Toggle auto-enter (CLI) |
 | Esc | Cancel key selection |
-| Backspace | Disable auto-enter key |
+| Backspace | Disable auto-enter key (during selection) |
+
+## File Locations
+
+| File | Path |
+|------|------|
+| Config file | `~/.wkey_config` |
+| Autostart plist | `~/Library/LaunchAgents/com.wkey.autostart.plist` |
+| API keys (bundled) | `~/.whisper-speak/.env` |
+| API keys (dev) | `./env` in project root |
+| Error log | `~/whisper-speak-error.log` |
+| Startup logs | `~/Library/Logs/wkey.out.log`, `~/Library/Logs/wkey.err.log` |
 
 ## Debugging Tips
 
@@ -176,5 +223,5 @@ customtkinter
 - Verify API key with: `echo $OPENAI_API_KEY`
 - Test audio: Status should turn red when hotkey held
 - If no typing occurs: Check Accessibility permissions (macOS)
-- Config file location: `~/.wkey_config`
-- Autostart plist: `~/Library/LaunchAgents/com.wkey.autostart.plist`
+- Check error log: `cat ~/whisper-speak-error.log`
+- Check autostart logs: `cat ~/Library/Logs/wkey.out.log`

@@ -32,8 +32,6 @@ from scipy.io import wavfile
 import sounddevice as sd
 from pynput.keyboard import Controller as KeyboardController, Key, Listener
 
-import openai
-
 from wkey.whisper import apply_whisper
 from wkey.utils import process_transcript, apply_gpt_correction
 from wkey.key_config import (
@@ -93,9 +91,25 @@ COLORS = {
 
 
 def _get_env_file_path() -> str:
-    """Get the path to the .env file in the project root."""
-    # Navigate from wkey/ to project root
-    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    """Get the path to the .env file."""
+    # For bundled apps, use ~/.whisper-speak/.env
+    # For development, use project root
+    home_config = os.path.expanduser("~/.whisper-speak")
+    home_env = os.path.join(home_config, ".env")
+
+    # If home config exists or we're running as bundled app, use home directory
+    if os.path.exists(home_env) or getattr(sys, 'frozen', False):
+        os.makedirs(home_config, exist_ok=True)
+        return home_env
+
+    # Otherwise try project root (development mode)
+    project_env = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    if os.path.exists(project_env):
+        return project_env
+
+    # Default to home config
+    os.makedirs(home_config, exist_ok=True)
+    return home_env
 
 
 def _load_env_values() -> dict:
@@ -161,16 +175,11 @@ def _save_env_values(values: dict):
     except Exception as e:
         print(f"Error saving .env file: {e}")
 
-    # Update runtime environment and openai module
+    # Update runtime environment variables
+    # (whisper.py and utils.py will pick these up when creating their clients)
     for key, value in values.items():
         if value:
             os.environ[key] = value
-
-    # Update openai module settings
-    if values.get("OPENAI_API_KEY"):
-        openai.api_key = values["OPENAI_API_KEY"]
-    if values.get("OPENAI_API_BASE"):
-        openai.api_base = values["OPENAI_API_BASE"]
 
 
 def _mask_api_key(key: str) -> str:
@@ -565,8 +574,10 @@ class WKeyGUI(QMainWindow):
 
     def _setup_window(self):
         """Configure the main window."""
-        self.setWindowTitle("wkey")
+        self.setWindowTitle("Whisper Speak")
         self.setFixedSize(320, 340)
+        # Position window at top-right of screen
+        self.move(100, 100)
         self.setWindowFlags(
             Qt.WindowType.WindowStaysOnTopHint |
             Qt.WindowType.Window
@@ -1212,9 +1223,13 @@ class WKeyGUI(QMainWindow):
             try:
                 language = get_language()
                 transcript = apply_whisper(file_to_transcribe, 'transcribe', language=language)
-            except openai.error.InvalidRequestError:
-                self._set_status(STATUS_READY)
-                return
+            except Exception as e:
+                # Handle API errors (e.g., invalid request, audio too short)
+                if "Invalid" in str(e) or "audio" in str(e).lower():
+                    print(f"Transcription error: {e}")
+                    self._set_status(STATUS_READY)
+                    return
+                raise
 
             if not transcript or len(transcript.strip()) < MIN_TRANSCRIPT_LENGTH:
                 print("Transcript too short, skipping")
@@ -1237,7 +1252,23 @@ class WKeyGUI(QMainWindow):
 
                 if use_auto_enter:
                     try:
+                        import time
+                        time.sleep(0.3)  # Delay to let the app process the typed text
+
+                        # Release all modifier keys to ensure clean Enter press
+                        for mod_key in [Key.shift, Key.shift_l, Key.shift_r,
+                                        Key.ctrl, Key.ctrl_l, Key.ctrl_r,
+                                        Key.alt, Key.alt_l, Key.alt_r,
+                                        Key.cmd, Key.cmd_l, Key.cmd_r]:
+                            try:
+                                self._keyboard_controller.release(mod_key)
+                            except:
+                                pass
+
+                        time.sleep(0.05)  # Small delay after releasing modifiers
+
                         send_mode = get_send_mode()
+                        print(f"Auto-enter: sending {send_mode}")
                         if send_mode == "cmd+enter":
                             self._keyboard_controller.press(Key.cmd)
                             self._keyboard_controller.press(Key.enter)
@@ -1246,6 +1277,7 @@ class WKeyGUI(QMainWindow):
                         else:
                             self._keyboard_controller.press(Key.enter)
                             self._keyboard_controller.release(Key.enter)
+                        print("Auto-enter: key sent successfully")
                     except Exception as e:
                         print(f"Warning: Could not press send key: {e}")
 
@@ -1271,10 +1303,31 @@ class WKeyGUI(QMainWindow):
 
 def main():
     """Main entry point."""
-    app = QApplication(sys.argv)
-    window = WKeyGUI()
-    window.show()
-    sys.exit(app.exec())
+    try:
+        # Load environment variables from .env file
+        # (whisper.py and utils.py will pick these up when creating their clients)
+        env_path = _get_env_file_path()
+        if os.path.exists(env_path):
+            env_values = _load_env_values()
+            for key, value in env_values.items():
+                if value:
+                    os.environ[key] = value
+
+        app = QApplication(sys.argv)
+        app.setApplicationName("Whisper Speak")
+        window = WKeyGUI()
+        window.show()
+        window.raise_()
+        window.activateWindow()
+        sys.exit(app.exec())
+    except Exception as e:
+        import traceback
+        # Write error to log file in home directory
+        log_path = os.path.expanduser("~/whisper-speak-error.log")
+        with open(log_path, "w") as f:
+            f.write(f"Error: {e}\n\n")
+            f.write(traceback.format_exc())
+        raise
 
 
 if __name__ == "__main__":

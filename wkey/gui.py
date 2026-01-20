@@ -25,8 +25,6 @@ from scipy.io import wavfile
 import sounddevice as sd
 from pynput.keyboard import Controller as KeyboardController, Key, Listener
 
-import openai
-
 from wkey.whisper import apply_whisper
 from wkey.utils import process_transcript, apply_gpt_correction
 from wkey.key_config import (
@@ -1001,9 +999,13 @@ class WKeyGUI(ctk.CTk):
             try:
                 language = get_language()
                 transcript = apply_whisper(file_to_transcribe, 'transcribe', language=language)
-            except openai.error.InvalidRequestError:
-                self._set_status(STATUS_READY)
-                return
+            except Exception as e:
+                # Handle API errors (e.g., invalid request, audio too short)
+                if "Invalid" in str(e) or "audio" in str(e).lower():
+                    print(f"Transcription error: {e}")
+                    self._set_status(STATUS_READY)
+                    return
+                raise
 
             # Check 3: Filter empty/short transcripts
             if not transcript or len(transcript.strip()) < MIN_TRANSCRIPT_LENGTH:
@@ -1032,6 +1034,21 @@ class WKeyGUI(ctk.CTk):
                 # Press Enter or Cmd+Enter based on send mode setting
                 if use_auto_enter:
                     try:
+                        import time
+                        time.sleep(0.3)  # Delay to let the app process the typed text
+
+                        # Release all modifier keys to ensure clean Enter press
+                        for mod_key in [Key.shift, Key.shift_l, Key.shift_r,
+                                        Key.ctrl, Key.ctrl_l, Key.ctrl_r,
+                                        Key.alt, Key.alt_l, Key.alt_r,
+                                        Key.cmd, Key.cmd_l, Key.cmd_r]:
+                            try:
+                                self._keyboard_controller.release(mod_key)
+                            except:
+                                pass
+
+                        time.sleep(0.05)  # Small delay after releasing modifiers
+
                         send_mode = get_send_mode()
                         if send_mode == "cmd+enter":
                             self._keyboard_controller.press(Key.cmd)

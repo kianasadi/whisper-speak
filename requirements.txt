@@ -1,6 +1,6 @@
 customtkinter>=5.2.0
 numpy
-openai==0.27.8
+openai>=1.0.0
 pynput==1.7.6
 PyQt6>=6.4.0
 python-dotenv==1.0.0
