@@ -14,6 +14,40 @@ Usage:
 
 import os
 import sys
+
+# Load environment variables EARLY, before other imports that may need them
+def _early_load_env():
+    """Load .env file early, before other modules are imported."""
+    home_config = os.path.expanduser("~/.whisper-speak")
+    home_env = os.path.join(home_config, ".env")
+
+    # Check home config first (for bundled app)
+    if os.path.exists(home_env):
+        env_path = home_env
+    else:
+        # Try project root (development mode)
+        project_env = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+        if os.path.exists(project_env):
+            env_path = project_env
+        else:
+            return  # No .env file found
+
+    # Load the .env file
+    try:
+        with open(env_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip()
+                    if key and value:
+                        os.environ[key] = value
+    except Exception:
+        pass
+
+_early_load_env()
+
 import threading
 import subprocess
 from typing import Optional
@@ -574,7 +608,7 @@ class WKeyGUI(QMainWindow):
 
     def _setup_window(self):
         """Configure the main window."""
-        self.setWindowTitle("Whisper Speak")
+        self.setWindowTitle("Viska")
         self.setFixedSize(320, 340)
         # Position window at top-right of screen
         self.move(100, 100)
@@ -1136,8 +1170,8 @@ class WKeyGUI(QMainWindow):
                     self._recording_with_auto_enter = True
                     self._audio_data = []
                     self._set_status(STATUS_RECORDING)
-            except Exception as e:
-                print(f"Warning: Error comparing hotkey: {e}")
+            except Exception:
+                pass
         except Exception as e:
             print(f"Warning: Unexpected error in _on_key_press: {e}")
 
@@ -1196,26 +1230,31 @@ class WKeyGUI(QMainWindow):
 
             audio_duration = len(audio_data_np) / self._sample_rate
             if audio_duration < MIN_AUDIO_DURATION_SECONDS:
-                print(f"Audio too short ({audio_duration:.2f}s), skipping")
                 self._set_status(STATUS_READY)
                 return
 
             rms = np.sqrt(np.mean(audio_data_np ** 2))
             if rms < MIN_RMS_THRESHOLD:
-                print(f"Audio too quiet (RMS={rms:.6f}), skipping")
                 self._set_status(STATUS_READY)
                 return
 
             audio_data_int16 = (audio_data_np * np.iinfo(np.int16).max).astype(np.int16)
-            wavfile.write('recording.wav', self._sample_rate, audio_data_int16)
 
-            file_to_transcribe = 'recording.wav'
+            # Use absolute paths in /tmp for bundled app compatibility
+            import tempfile
+            temp_dir = tempfile.gettempdir()
+            wav_path = os.path.join(temp_dir, 'viska_recording.wav')
+            m4a_path = os.path.join(temp_dir, 'viska_recording.m4a')
+
+            wavfile.write(wav_path, self._sample_rate, audio_data_int16)
+
+            file_to_transcribe = wav_path
             try:
                 subprocess.run(
-                    ['ffmpeg', '-i', 'recording.wav', '-c:a', 'aac', '-b:a', '32k', 'recording.m4a', '-y'],
+                    ['ffmpeg', '-i', wav_path, '-c:a', 'aac', '-b:a', '32k', m4a_path, '-y'],
                     check=True, capture_output=True
                 )
-                file_to_transcribe = 'recording.m4a'
+                file_to_transcribe = m4a_path
             except (subprocess.CalledProcessError, FileNotFoundError):
                 pass
 
@@ -1226,7 +1265,6 @@ class WKeyGUI(QMainWindow):
             except Exception as e:
                 # Handle API errors (e.g., invalid request, audio too short)
                 if "Invalid" in str(e) or "audio" in str(e).lower():
-                    print(f"Transcription error: {e}")
                     self._set_status(STATUS_READY)
                     return
                 raise
@@ -1314,7 +1352,7 @@ def main():
                     os.environ[key] = value
 
         app = QApplication(sys.argv)
-        app.setApplicationName("Whisper Speak")
+        app.setApplicationName("Viska")
         window = WKeyGUI()
         window.show()
         window.raise_()

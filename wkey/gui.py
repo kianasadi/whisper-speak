@@ -96,7 +96,7 @@ class WKeyGUI(ctk.CTk):
         super().__init__()
 
         # Window configuration
-        self.title("wkey")
+        self.title("Viska")
         self.geometry("320x445")
         self.minsize(280, 405)
         self.configure(fg_color=COLORS["bg_dark"])
@@ -980,17 +980,23 @@ class WKeyGUI(ctk.CTk):
 
             audio_data_int16 = (audio_data_np * np.iinfo(np.int16).max).astype(np.int16)
 
-            wavfile.write('recording.wav', self._sample_rate, audio_data_int16)
+            # Use absolute paths in /tmp for bundled app compatibility
+            import tempfile
+            temp_dir = tempfile.gettempdir()
+            wav_path = os.path.join(temp_dir, 'viska_recording.wav')
+            m4a_path = os.path.join(temp_dir, 'viska_recording.m4a')
+
+            wavfile.write(wav_path, self._sample_rate, audio_data_int16)
 
             # Convert to m4a for faster upload
-            file_to_transcribe = 'recording.wav'
+            file_to_transcribe = wav_path
             try:
                 subprocess.run(
-                    ['ffmpeg', '-i', 'recording.wav', '-c:a', 'aac', '-b:a', '32k', 'recording.m4a', '-y'],
+                    ['ffmpeg', '-i', wav_path, '-c:a', 'aac', '-b:a', '32k', m4a_path, '-y'],
                     check=True,
                     capture_output=True
                 )
-                file_to_transcribe = 'recording.m4a'
+                file_to_transcribe = m4a_path
             except (subprocess.CalledProcessError, FileNotFoundError):
                 pass
 
