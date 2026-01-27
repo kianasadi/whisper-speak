@@ -1,0 +1,11 @@
+# Requirements for building Viska universal2 app
+# These versions have universal2 wheels available
+
+numpy>=1.24.0
+scipy>=1.10.0
+PyQt6>=6.4.0
+sounddevice>=0.4.6
+pynput>=1.7.6
+openai>=1.0.0
+python-dotenv>=1.0.0
+pyinstaller>=6.0.0

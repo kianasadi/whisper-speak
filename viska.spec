@@ -62,7 +62,7 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=True,
-    target_arch=None,
+    target_arch='universal2',
     codesign_identity=None,
     entitlements_file=None,
 )
@@ -93,5 +93,6 @@ app = BUNDLE(
         'NSInputMonitoringUsageDescription': 'Viska needs input monitoring access to detect when you press the hotkey to start recording.',
         'LSUIElement': False,
         'NSHighResolutionCapable': True,
+        'LSArchitecturePriority': ['arm64', 'x86_64'],
     },
 )

@@ -30,7 +30,12 @@ MANIFEST
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
-*.spec
+# Keep viska.spec for builds, ignore others
+whisper_speak.spec
+
+# Release artifacts (upload to GitHub Releases instead)
+*.zip
+*.dmg
 
 # Installer logs
 pip-log.txt

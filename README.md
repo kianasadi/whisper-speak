@@ -1,61 +1,88 @@
-# whisper-keyboard
+# Viska
 
-Simulate keyboard typing with voice commands on your computer. Use the power of OpenAI's Whisper.
+Voice-to-text for macOS. Hold a hotkey, speak, release — your words are typed instantly.
 
-Start the wkey listener. Keep a button pressed (by default: right ctrl) and speak. Your voice will be recorded locally. When the button is released, your command will be transcribed via Whisper and the text will be streamed to your keyboard.
+## Download
 
-You can use your voice to write anywhere. 
+**[Download Viska-1.0.0-macOS.zip](https://github.com/kianasadi/whisper-speak/releases/latest)**
 
-You will incur costs for Whisper API. Currently, it costs $0.36 for 1 hour of transcription.
+1. Download the zip from the latest release
+2. Unzip and drag **Viska.app** to your Applications folder
+3. Open Viska and grant the required permissions (see below)
+
+## Features
+
+- **Hold-to-record**: Hold a hotkey to record, release to transcribe and type
+- **Two hotkeys**: One for regular dictation, one for auto-send (Enter/Cmd+Enter)
+- **Fast transcription**: Uses Groq's Whisper API (free tier available)
+- **Optional LLM processing**: Clean up transcriptions with AI
+- **18 languages supported**: Swedish, English, Spanish, and more
+- **Start with macOS**: Optional autostart on login
+- **Minimal UI**: Small status window, stays out of your way
 
 ## Setup
 
-Install the package.
+### 1. Get a Groq API Key (free)
 
-```shell
-pip install wkey
+1. Go to [console.groq.com](https://console.groq.com)
+2. Sign up and create an API key
+3. Open Viska, click the gear icon, and enter your API key
+
+### 2. Grant Permissions
+
+On first launch, macOS will ask for permissions. Go to **System Settings > Privacy & Security** and enable:
+
+- **Microphone**: Required to record your voice
+- **Accessibility**: Required to type text into other apps
+- **Input Monitoring**: Required to detect hotkey presses
+
+Restart Viska after granting permissions.
+
+## Usage
+
+| Action | Result |
+|--------|--------|
+| Hold transcription hotkey | Start recording (status turns red) |
+| Release transcription hotkey | Transcribe and type text |
+| Hold auto-enter hotkey | Start recording |
+| Release auto-enter hotkey | Transcribe, type, and send (Enter or Cmd+Enter) |
+
+### Settings
+
+- **Language**: Choose your primary language for better accuracy
+- **Send mode** (⏎/⌘⏎): Toggle between Enter and Cmd+Enter for auto-send
+- **LLM toggle**: Enable AI text correction
+- **Instructions**: Customize the LLM prompt
+- **Start with computer**: Launch Viska on login
+
+## API Configuration
+
+Viska uses Groq by default (fast and free tier available). You can also use OpenAI.
+
+| Setting | Default |
+|---------|---------|
+| API Base | `https://api.groq.com/openai/v1` |
+| Whisper Model | `whisper-large-v3-turbo` |
+| LLM Model | `llama-3.1-8b-instant` |
+
+## Building from Source
+
+```bash
+# Clone the repo
+git clone https://github.com/kianasadi/whisper-speak.git
+cd whisper-speak
+
+# Install dependencies
+pip install -r requirements.txt
+pip install -r requirements-build.txt
+
+# Run from source
+python -m wkey.gui_pyqt
+
+# Build the app
+./build_universal.sh
 ```
 
-You will need to set two environment variables:
+## License
 
-- OPENAI_API_KEY: your personal OpenAI API key. You can get it by signing up here: https://platform.openai.com/
-- WKEY: the keyboard key you want to use to start recording. By default, it is set to right ctrl. You can use any key. Note that Mac and Windows might have different key codes. You can run `fkey` to find the code of the key you want to use.
-
-You can set the environment variables in your shell:
-
-```shell
-export OPENAI_API_KEY=<your key>
-export WKEY=ctrl_r
-```
-
-Run `wkey` in a terminal window to start listening. 
-
-If there are issues, check the additional requirements.
-
-## Additional requirements
-
-Requirements differ depending on your OS.
-
-### Ubuntu
-
-You will need to install the portaudio library. 
-
-```shell
-sudo apt-get install portaudio19-dev 
-```
-
-### Mac
-You will need to authorize your terminal to use the microphone and keyboard. Go to System Settings > Privacy and Security. Then: 
-* Select Microphone and authorize your terminal.
-* Select Accessibility and authorize your terminal.
-
-Restart the terminal for the changes to take effect. 
-
-Note that this might entail security risks.
-
-### Windows
-Haven't tested it on Windows yet. If you do, please let me know how it goes.
-
-## Security risks
-
-This script creates a recording with your microphone and sends the audio to the Whisper API. The Whisper API response will be automatically streamed to your keyboard and executed there. This might entail security risks. Use at your own risk. 
+MIT
